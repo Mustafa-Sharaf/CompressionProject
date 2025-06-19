@@ -1,0 +1,9 @@
+.vs/
+.idea/
+*.user
+*.suo
+*.cache
+*.db
+bin/
+obj/
+packages/
