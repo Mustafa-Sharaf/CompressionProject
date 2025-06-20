@@ -39,7 +39,6 @@ namespace FilesCompressionProject
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     string filePath = openFileDialog.FileName;
-                    //MessageBox.Show($" تم اختيار الملف:\n{filePath}");
                 }
             }
         }
@@ -58,8 +57,6 @@ namespace FilesCompressionProject
                 {
                     string folderPath = folderDialog.SelectedPath;
                     string[] files = Directory.GetFiles(folderPath);
-
-                    //MessageBox.Show($"📁 تم اختيار المجلد:\n{folderPath}\nيحتوي على {files.Length} ملف");
                 }
             }
 
