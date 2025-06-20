@@ -67,8 +67,25 @@ namespace FilesCompressionProject
             var compressor = new HuffmanCompressor();
             compressor.CompressFile(selectedFilePath);
 
-            
-            MessageBox.Show("تم ضغط الملف بنجاح compressed.huff");
+            FileInfo original = new FileInfo(selectedFilePath);
+            FileInfo compressed = new FileInfo("compressed.huff");
+
+            long originalSize = original.Length;
+            long compressedSize = compressed.Length;
+
+            double ratio = (double)compressedSize / originalSize;
+            double percentage = (1 - ratio) * 100;
+
+            MessageBox.Show(
+                $"تم ضغط الملف بنجاح إلى compressed.huff\n\n" +
+                $"الحجم الأصلي: {originalSize} bytes\n" +
+                $"الحجم بعد الضغط: {compressedSize} bytes\n" +
+                $"نسبة الضغط: {ratio:F2}\n" +
+                $"نسبة التوفير: {percentage:F2}%",
+                "تمت العملية",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
 
 
         }
