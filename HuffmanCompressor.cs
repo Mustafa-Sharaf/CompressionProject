@@ -8,6 +8,12 @@ namespace FilesCompressionProject
 {
     public class HuffmanCompressor
     {
+        private readonly Func<bool> isCancelled;
+
+        public HuffmanCompressor(Func<bool> cancelFunc = null)
+        {
+            isCancelled = cancelFunc ?? (() => false);
+        }
         public void CompressFile(string filePath, string outputPath = "compressed.huff")
         {
             var bytes = File.ReadAllBytes(filePath);
