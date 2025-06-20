@@ -53,7 +53,7 @@
         }
 
         #endregion
-
+            
         private System.Windows.Forms.Button CancelButton;
         private System.Windows.Forms.Label labelStatus;
     }
