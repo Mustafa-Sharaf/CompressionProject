@@ -19,7 +19,7 @@ namespace FilesCompressionProject
         private bool cancelRequested = false;
 
         private string selectedFilePath = string.Empty;
-
+        private List<string> selectedFilePaths = new List<string>();
         public Form1()
         {
             InitializeComponent();
@@ -31,11 +31,12 @@ namespace FilesCompressionProject
             {
                 openFileDialog.Title = "Select a file";
                 openFileDialog.Filter = "All Files (*.*)|*.*";
-
+                openFileDialog.Multiselect = true;
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     selectedFilePath = openFileDialog.FileName;
                 }
+
             }
         }
 
@@ -54,9 +55,9 @@ namespace FilesCompressionProject
 
         private void CompressionHuffman_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(selectedFilePath))
+            if (selectedFilePaths == null || selectedFilePaths.Count == 0)
             {
-                MessageBox.Show("Please select the file first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please select one or more files first.", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (isCancelled()) return;
@@ -93,7 +94,11 @@ namespace FilesCompressionProject
 
                 long originalSize = original.Length;
                 long compressedSize = compressed.Length;
+                long originalSize = original.Length;
+                long compressedSize = compressed.Length;
 
+                double ratio = (double)compressedSize / originalSize;
+                double percentage = (1 - ratio) * 100;
                 double ratio = (double)compressedSize / originalSize;
                 double percentage = (1 - ratio) * 100;
 
