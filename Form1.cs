@@ -14,7 +14,6 @@ namespace FilesCompressionProject
     public partial class Form1 : Form
     {
 
-
         private string selectedFilePath = string.Empty;
 
         public Form1()
@@ -64,11 +63,17 @@ namespace FilesCompressionProject
                 MessageBox.Show("Please select the file first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
+
             var compressor = new HuffmanCompressor();
-            compressor.CompressFile(selectedFilePath);
+            string directory = Path.GetDirectoryName(selectedFilePath);
+            string outputPath = Path.Combine(directory, "compressed.huff");
+
+            compressor.CompressFile(selectedFilePath, outputPath);
+
 
             FileInfo original = new FileInfo(selectedFilePath);
-            FileInfo compressed = new FileInfo("compressed.huff");
+            FileInfo compressed = new FileInfo(outputPath);
+
 
             long originalSize = original.Length;
             long compressedSize = compressed.Length;
@@ -77,7 +82,7 @@ namespace FilesCompressionProject
             double percentage = (1 - ratio) * 100;
 
             MessageBox.Show(
-                $"تم ضغط الملف بنجاح إلى compressed.huff\n\n" +
+                $"compressed.huffتم ضغط الملف بنجاح إلى \n\n" +
                 $"الحجم الأصلي: {originalSize} bytes\n" +
                 $"الحجم بعد الضغط: {compressedSize} bytes\n" +
                 $"نسبة الضغط: {ratio:F2}\n" +
@@ -107,12 +112,21 @@ namespace FilesCompressionProject
                 return;
             }
             var compressor = new HuffmanCompressor();
-            compressor.DecompressFile("compressed.huff");
-            MessageBox.Show("تم فك الضغط وحفظ الملف باسم decompressed.huff");
+            string directory = Path.GetDirectoryName(selectedFilePath);
+            string compressedPath = Path.Combine(directory, "compressed.huff");
+            string originalExtension = Path.GetExtension(selectedFilePath);
+            string decompressedPath = Path.Combine(directory, "decompressed_output");
+
+            compressor.DecompressFile(compressedPath, decompressedPath);
+
+            MessageBox.Show("decompressed.huffتم فك الضغط وحفظ الملف باسم ");
 
 
         }
 
+        private void button1_Click(object sender, EventArgs e)
+        {
 
+        }
     }
 }
