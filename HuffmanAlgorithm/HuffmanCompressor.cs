@@ -8,6 +8,14 @@ namespace FilesCompressionProject
 {
     public class HuffmanCompressor
     {
+        
+     private readonly Func<bool> isCancelled;
+
+    public HuffmanCompressor(Func<bool> cancelFunc = null)
+    {
+        isCancelled = cancelFunc ?? (() => false);
+    }
+
         public void CompressFile(string filePath, string outputPath = "compressed.huff")
         {
             var bytes = File.ReadAllBytes(filePath);
@@ -26,7 +34,8 @@ namespace FilesCompressionProject
 
 
                 foreach (var kv in codes)
-                {
+                {if (isCancelled()) return;
+
                     writer.Write(kv.Key);
                     writer.Write(kv.Value);
                 }
@@ -62,7 +71,8 @@ namespace FilesCompressionProject
                 List<byte> result = new List<byte>();
                 string buffer = "";
                 foreach (char bit in bitString)
-                {
+                {if (isCancelled()) return;
+
                     buffer += bit;
                     if (codeTable.ContainsKey(buffer))
                     {
