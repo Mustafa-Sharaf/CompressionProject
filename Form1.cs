@@ -105,7 +105,8 @@ namespace FilesCompressionProject
 
                 if (cancelRequested)
                 {
-                    MessageBox.Show("تم إلغاء العملية", "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("تم إلغاء العملية", 
+                     "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
