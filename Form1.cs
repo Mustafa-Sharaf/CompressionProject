@@ -16,10 +16,14 @@ namespace FilesCompressionProject
     {
         private BackgroundWorker backgroundWorker;
         private WaitingForm waitingForm;
+        private BackgroundWorker compressWorker;
         private bool cancelRequested = false;
+        private BackgroundWorker extractWorker;
+        
 
         private string selectedFilePath = string.Empty;
         private List<string> selectedFilePaths = new List<string>();
+        private List<HuffmanArchiveEntry> archiveEntries = new List<HuffmanArchiveEntry>();
         public Form1()
         {
             InitializeComponent();
@@ -101,7 +105,8 @@ namespace FilesCompressionProject
 
                 if (cancelRequested)
                 {
-                    MessageBox.Show("تم إلغاء العملية", "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("تم إلغاء العملية", 
+                     "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -166,6 +171,222 @@ namespace FilesCompressionProject
             MessageBox.Show("decompressed.huffتم فك الضغط وحفظ الملف باسم ");
 
 
+        }
+
+        private void CompressToArchiveButton_Click(object sender, EventArgs e)
+        {
+            using (var openDialog = new OpenFileDialog())
+            {
+                openDialog.Multiselect = true;
+                openDialog.Title = "Select files to compress";
+                if (openDialog.ShowDialog() != DialogResult.OK) return;
+
+                cancelRequested = false;
+                waitingForm = new WaitingForm();
+                compressWorker = new BackgroundWorker();
+                compressWorker.WorkerSupportsCancellation = true;
+
+                string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                string archivePath = Path.Combine(downloadsPath, DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_compressed.huffarc");
+                List<HuffmanArchiveEntry> entries = new List<HuffmanArchiveEntry>();
+
+                compressWorker.DoWork += (s, args) =>
+                {
+                    using (FileStream archive = new FileStream(archivePath, FileMode.Create))
+                    {
+                        archive.Seek(1024, SeekOrigin.Begin); // احجز 1KB كبداية للجدول
+
+                        foreach (string file in openDialog.FileNames)
+                        {
+                            if (cancelRequested)
+                            {
+                                args.Cancel = true;
+                                break;
+                            }
+
+                            byte[] inputBytes = File.ReadAllBytes(file);
+                            byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
+
+                            long offset = archive.Position;
+                            archive.Write(compressedBytes, 0, compressedBytes.Length);
+
+                            entries.Add(new HuffmanArchiveEntry
+                            {
+                                FileName = Path.GetFileName(file),
+                                OriginalSize = inputBytes.Length,
+                                CompressedSize = compressedBytes.Length,
+                                Offset = offset
+                            });
+                        }
+
+                        if (!args.Cancel)
+                        {
+                            // كتابة جدول المحتويات في البداية
+                            archive.Seek(0, SeekOrigin.Begin);
+                            using (BinaryWriter writer = new BinaryWriter(archive, Encoding.UTF8, true))
+                            {
+                                writer.Write(entries.Count);
+                                foreach (var entry in entries)
+                                {
+                                    writer.Write(entry.FileName);
+                                    writer.Write(entry.OriginalSize);
+                                    writer.Write(entry.CompressedSize);
+                                    writer.Write(entry.Offset);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                compressWorker.RunWorkerCompleted += (s, args) =>
+                {
+                    if (waitingForm.InvokeRequired)
+                    {
+                        waitingForm.Invoke((MethodInvoker)(() => waitingForm.Close()));
+                    }
+                    else
+                    {
+                        waitingForm.Close();
+                    }
+
+                    if (args.Cancelled)
+                    {
+                        MessageBox.Show("تم إلغاء الضغط", "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    MessageBox.Show("تم ضغط الملفات في مجلد التنزيلات داخل compressed.huffarc");
+                };
+
+                compressWorker.RunWorkerAsync();
+                waitingForm.ShowDialog();
+                cancelRequested = waitingForm.IsCancelled;
+            }
+        }
+
+        private void BrowseArchiveButton_Click(object sender, EventArgs e)
+        {
+            archiveFilesListBox.Items.Clear();
+            archiveEntries = new List<HuffmanArchiveEntry>();
+
+            string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+
+            using (var openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.InitialDirectory = downloadsPath;
+                openFileDialog.Filter = "Huffman Archives (*.huffarc)|*.huffarc";
+                openFileDialog.Title = "اختر ملف أرشيف (.huffarc)";
+
+                if (openFileDialog.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+
+                string archivePath = openFileDialog.FileName;
+
+                if (!File.Exists(archivePath))
+                {
+                    MessageBox.Show("ملف الأرشيف غير موجود.");
+                    return;
+                }
+
+                using (var fs = new FileStream(archivePath, FileMode.Open))
+                using (var reader = new BinaryReader(fs, Encoding.UTF8))
+                {
+                    int count = reader.ReadInt32();
+                    for (int i = 0; i < count; i++)
+                    {
+                        var entry = new HuffmanArchiveEntry
+                        {
+                            FileName = reader.ReadString(),
+                            OriginalSize = reader.ReadInt64(),
+                            CompressedSize = reader.ReadInt64(),
+                            Offset = reader.ReadInt64()
+                        };
+                        archiveEntries.Add(entry);
+                        archiveFilesListBox.Items.Add(entry.FileName);
+                    }
+                }
+            }
+        }
+
+        private void ExtractSelectedFileButton_Click(object sender, EventArgs e)
+        {
+            if (archiveFilesListBox.SelectedIndex == -1)
+            {
+                MessageBox.Show("اختر ملفًا من القائمة أولاً.");
+                return;
+            }
+
+            cancelRequested = false;
+            waitingForm = new WaitingForm();
+            extractWorker = new BackgroundWorker();
+            extractWorker.WorkerSupportsCancellation = true;
+
+            string selectedFileName = archiveFilesListBox.SelectedItem.ToString();
+            var entry = archiveEntries.FirstOrDefault(ee => ee.FileName == selectedFileName);
+
+            if (entry == null) return;
+
+            string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            string archivePath = Path.Combine(downloadsPath, "compressed.huffarc");
+
+            extractWorker.DoWork += (s, args) =>
+            {
+                if (cancelRequested)
+                {
+                    args.Cancel = true;
+                    return;
+                }
+
+                using (var fs = new FileStream(archivePath, FileMode.Open))
+                {
+                    fs.Seek(entry.Offset, SeekOrigin.Begin);
+                    byte[] compressedData = new byte[entry.CompressedSize];
+                    fs.Read(compressedData, 0, compressedData.Length);
+
+                    if (cancelRequested)
+                    {
+                        args.Cancel = true;
+                        return;
+                    }
+
+                    byte[] decompressedData = new HuffmanCompressor().DecompressBytes(compressedData);
+
+                    if (cancelRequested)
+                    {
+                        args.Cancel = true;
+                        return;
+                    }
+
+                    string savePath = Path.Combine(downloadsPath, "extracted_" + entry.FileName);
+                    File.WriteAllBytes(savePath, decompressedData);
+                }
+            };
+
+            extractWorker.RunWorkerCompleted += (s, args) =>
+            {
+                if (waitingForm.InvokeRequired)
+                {
+                    waitingForm.Invoke((MethodInvoker)(() => waitingForm.Close()));
+                }
+                else
+                {
+                    waitingForm.Close();
+                }
+
+                if (args.Cancelled)
+                {
+                    MessageBox.Show("تم إلغاء فك الضغط", "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                MessageBox.Show("تم استخراج الملف إلى: مجلد التنزيلات\n\nextracted_" + entry.FileName);
+            };
+
+            extractWorker.RunWorkerAsync();
+            waitingForm.ShowDialog();
+            cancelRequested = waitingForm.IsCancelled;
         }
 
         private bool isCancelled()

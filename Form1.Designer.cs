@@ -1,4 +1,4 @@
-﻿namespace FilesCompressionProject
+﻿﻿﻿﻿namespace FilesCompressionProject
 {
     partial class Form1
     {
@@ -6,6 +6,11 @@
         /// Required designer variable.
         /// </summary>
         private System.ComponentModel.IContainer components = null;
+        private System.Windows.Forms.ListBox archiveFilesListBox;
+        private System.Windows.Forms.Button compressToArchiveButton;
+        private System.Windows.Forms.Button browseArchiveButton;
+        private System.Windows.Forms.Button extractSelectedFileButton;
+
 
         /// <summary>
         /// Clean up any resources being used.
@@ -33,8 +38,9 @@
             this.ChooseFile = new System.Windows.Forms.Button();
             this.ChooseFolder = new System.Windows.Forms.Button();
             this.CompressionShannonFano = new System.Windows.Forms.Button();
-            this.button1 = new System.Windows.Forms.Button();
-            this.SuspendLayout();
+            //this.button1 = new System.Windows.Forms.Button();
+            //this.SuspendLayout();
+
             // 
             // CompressionHuffman
             // 
@@ -106,7 +112,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(600, 366);
-            this.Controls.Add(this.button1);
+            //this.Controls.Add(this.button1);
             this.Controls.Add(this.CompressionShannonFano);
             this.Controls.Add(this.ChooseFolder);
             this.Controls.Add(this.ChooseFile);
@@ -116,6 +122,44 @@
             this.Name = "Form1";
             this.Text = "Form1";
             this.ResumeLayout(false);
+            /////////
+            ///
+            this.archiveFilesListBox = new System.Windows.Forms.ListBox();
+            this.archiveFilesListBox.Location = new System.Drawing.Point(22, 200);
+            this.archiveFilesListBox.Size = new System.Drawing.Size(200, 150);
+            this.archiveFilesListBox.Name = "archiveFilesListBox";
+            this.archiveFilesListBox.TabIndex = 6;
+            this.archiveFilesListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Bottom)));
+            this.Controls.Add(this.archiveFilesListBox);
+
+            // compressToArchiveButton
+            this.compressToArchiveButton = new System.Windows.Forms.Button();
+            this.compressToArchiveButton.Location = new System.Drawing.Point(300, 200);
+            this.compressToArchiveButton.Size = new System.Drawing.Size(180, 25);
+            this.compressToArchiveButton.Text = "Compress To Archive";
+            this.compressToArchiveButton.UseVisualStyleBackColor = true;
+            this.compressToArchiveButton.Click += new System.EventHandler(this.CompressToArchiveButton_Click);
+            this.Controls.Add(this.compressToArchiveButton);
+
+            // browseArchiveButton
+            this.browseArchiveButton = new System.Windows.Forms.Button();
+            this.browseArchiveButton.Location = new System.Drawing.Point(300, 240);
+            this.browseArchiveButton.Size = new System.Drawing.Size(180, 25);
+            this.browseArchiveButton.Text = "Browse Archive";
+            this.browseArchiveButton.UseVisualStyleBackColor = true;
+            this.browseArchiveButton.Click += new System.EventHandler(this.BrowseArchiveButton_Click);
+            this.Controls.Add(this.browseArchiveButton);
+
+            // extractSelectedFileButton
+            this.extractSelectedFileButton = new System.Windows.Forms.Button();
+            this.extractSelectedFileButton.Location = new System.Drawing.Point(300, 280);
+            this.extractSelectedFileButton.Size = new System.Drawing.Size(180, 25);
+            this.extractSelectedFileButton.Text = "Extract Selected File";
+            this.extractSelectedFileButton.UseVisualStyleBackColor = true;
+            this.extractSelectedFileButton.Click += new System.EventHandler(this.ExtractSelectedFileButton_Click);
+            this.Controls.Add(this.extractSelectedFileButton);
+
 
         }
 
@@ -126,7 +170,6 @@
         private System.Windows.Forms.Button ChooseFile;
         private System.Windows.Forms.Button ChooseFolder;
         private System.Windows.Forms.Button CompressionShannonFano;
-        private System.Windows.Forms.Button button1;
+        
     }
 }
-

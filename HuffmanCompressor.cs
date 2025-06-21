@@ -141,6 +141,30 @@ namespace FilesCompressionProject
             compressor.DecompressFile("compressed.huff");
             MessageBox.Show("تم فك الضغط وحفظ الملف باسم decompressed.huff");
         }
+       
+        public byte[] CompressBytes(byte[] inputBytes)
+        {
+            string inputTemp = Path.GetTempFileName();
+            string outputTemp = Path.GetTempFileName();
+            File.WriteAllBytes(inputTemp, inputBytes);
+            CompressFile(inputTemp, outputTemp);
+            byte[] compressed = File.ReadAllBytes(outputTemp);
+            File.Delete(inputTemp);
+            File.Delete(outputTemp);
+            return compressed;
+        }
+
+        public byte[] DecompressBytes(byte[] compressedBytes)
+        {
+            string inputTemp = Path.GetTempFileName();
+            string outputTemp = Path.GetTempFileName();
+            File.WriteAllBytes(inputTemp, compressedBytes);
+            DecompressFile(inputTemp, outputTemp);
+            byte[] decompressed = File.ReadAllBytes(outputTemp);
+            File.Delete(inputTemp);
+            File.Delete(outputTemp);
+            return decompressed;
+        }
 
         private bool isCancelled()
         {
