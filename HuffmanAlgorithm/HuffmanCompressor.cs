@@ -155,7 +155,29 @@ namespace FilesCompressionProject
 
             return result;
         }
+        public byte[] CompressBytes(byte[] inputBytes)
+        {
+            string inputTemp = Path.GetTempFileName();
+            string outputTemp = Path.GetTempFileName();
+            File.WriteAllBytes(inputTemp, inputBytes);
+            CompressFile(inputTemp, outputTemp);
+            byte[] compressed = File.ReadAllBytes(outputTemp);
+            File.Delete(inputTemp);
+            File.Delete(outputTemp);
+            return compressed;
+        }
 
+        public byte[] DecompressBytes(byte[] compressedBytes)
+        {
+            string inputTemp = Path.GetTempFileName();
+            string outputTemp = Path.GetTempFileName();
+            File.WriteAllBytes(inputTemp, compressedBytes);
+            DecompressFile(inputTemp, outputTemp);
+            byte[] decompressed = File.ReadAllBytes(outputTemp);
+            File.Delete(inputTemp);
+            File.Delete(outputTemp);
+            return decompressed;
+        }
         private string BytesToBits(byte[] bytes)
         {
             StringBuilder sb = new StringBuilder(bytes.Length * 8);
