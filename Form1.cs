@@ -16,7 +16,6 @@ namespace FilesCompressionProject
 
 
         private string selectedFilePath = string.Empty;
-        private int selectedFolderPath = 0;
 
         public Form1()
         {
@@ -42,7 +41,6 @@ namespace FilesCompressionProject
 
         private void ChooseFolder_Click(object sender, EventArgs e)
         {
-            selectedFolderPath++;
 
             using (var folderDialog = new FolderBrowserDialog())
             {
@@ -51,7 +49,8 @@ namespace FilesCompressionProject
                 {
                     string folderPath = folderDialog.SelectedPath;
                     string[] files = Directory.GetFiles(folderPath);
-                 
+
+
                 }
             }
 
@@ -60,22 +59,43 @@ namespace FilesCompressionProject
 
         private void CompressionHuffman_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(selectedFilePath)|| selectedFolderPath == 0)
+            if (string.IsNullOrEmpty(selectedFilePath))
             {
-                MessageBox.Show("Please select the file or folder first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please select the file first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            else
+            var compressor = new HuffmanCompressor();
+            compressor.CompressFile(selectedFilePath);
+
+            FileInfo original = new FileInfo(selectedFilePath);
+            FileInfo compressed = new FileInfo("compressed.huff");
+
+            long originalSize = original.Length;
+            long compressedSize = compressed.Length;
+
+            double ratio = (double)compressedSize / originalSize;
+            double percentage = (1 - ratio) * 100;
+
+            MessageBox.Show(
+                $"تم ضغط الملف بنجاح إلى compressed.huff\n\n" +
+                $"الحجم الأصلي: {originalSize} bytes\n" +
+                $"الحجم بعد الضغط: {compressedSize} bytes\n" +
+                $"نسبة الضغط: {ratio:F2}\n" +
+                $"نسبة التوفير: {percentage:F2}%",
+                "تمت العملية",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+
+
+        }
+        private void CompressionShannonFano_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(selectedFilePath))
             {
-                var compressor = new HuffmanCompressor();
-                compressor.CompressFile(selectedFilePath);
-
-
-                MessageBox.Show("تم ضغط الملف بنجاح compressed.huff");
+                MessageBox.Show("Please select the file first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
-         
-          
-
 
         }
 
@@ -83,10 +103,9 @@ namespace FilesCompressionProject
         {
             if (string.IsNullOrEmpty(selectedFilePath))
             {
-                MessageBox.Show("Please select the file or folder first ", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please select the file first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-          
             var compressor = new HuffmanCompressor();
             compressor.DecompressFile("compressed.huff");
             MessageBox.Show("تم فك الضغط وحفظ الملف باسم decompressed.huff");
@@ -95,45 +114,5 @@ namespace FilesCompressionProject
         }
 
 
-        private void CompressionShannonFano_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(selectedFilePath)|| selectedFolderPath == 0)
-            {
-                MessageBox.Show("Please select the file  or Folder first ", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            else
-            {
-                var compressor = new ShannonFanoCompressor();
-                compressor.CompressFile(selectedFilePath);
-                MessageBox.Show("تم ضغط الملف بنجاح compressed_sf.shf");
-            }
-           
-
-        }
-
-
-
-        private void DecompressShannonFano_Click(object sender, EventArgs e)
-        {
-            using (var openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.Title = "اختر ملف مضغوط بصيغة Shannon-Fano";
-                openFileDialog.Filter = "Shannon-Fano Compressed Files (*.shf)|*.shf";
-
-                if (openFileDialog.ShowDialog() != DialogResult.OK)
-                    return;
-
-                selectedFilePath = openFileDialog.FileName;
-            }
-            var compressor = new ShannonFanoCompressor();
-            compressor.DecompressFile(selectedFilePath);
-
-        }
-
-    
-
-        
     }
 }
-//mustafa
