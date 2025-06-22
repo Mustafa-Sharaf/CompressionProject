@@ -8,9 +8,22 @@ namespace FilesCompressionProject
 {
     public class HuffmanCompressor
     {
+        
+     private readonly Func<bool> isCancelled;
+
+    public HuffmanCompressor(Func<bool> cancelFunc = null)
+    {
+        isCancelled = cancelFunc ?? (() => false);
+    }
+
         public void CompressFile(string filePath, string outputPath = "compressed.huff")
         {
             var bytes = File.ReadAllBytes(filePath);
+            if (bytes.Length == 0)
+            {
+                Console.WriteLine($"تم تجاهل الملف الفارغ: {filePath}");
+                return;
+            }
             var freq = BuildFrequencyTable(bytes);
             var tree = BuildTree(freq);
 
@@ -26,7 +39,8 @@ namespace FilesCompressionProject
 
 
                 foreach (var kv in codes)
-                {
+                {if (isCancelled()) return;
+
                     writer.Write(kv.Key);
                     writer.Write(kv.Value);
                 }
@@ -62,7 +76,8 @@ namespace FilesCompressionProject
                 List<byte> result = new List<byte>();
                 string buffer = "";
                 foreach (char bit in bitString)
-                {
+                {if (isCancelled()) return;
+
                     buffer += bit;
                     if (codeTable.ContainsKey(buffer))
                     {
@@ -145,7 +160,29 @@ namespace FilesCompressionProject
 
             return result;
         }
+        public byte[] CompressBytes(byte[] inputBytes)
+        {
+            string inputTemp = Path.GetTempFileName();
+            string outputTemp = Path.GetTempFileName();
+            File.WriteAllBytes(inputTemp, inputBytes);
+            CompressFile(inputTemp, outputTemp);
+            byte[] compressed = File.ReadAllBytes(outputTemp);
+            File.Delete(inputTemp);
+            File.Delete(outputTemp);
+            return compressed;
+        }
 
+        public byte[] DecompressBytes(byte[] compressedBytes)
+        {
+            string inputTemp = Path.GetTempFileName();
+            string outputTemp = Path.GetTempFileName();
+            File.WriteAllBytes(inputTemp, compressedBytes);
+            DecompressFile(inputTemp, outputTemp);
+            byte[] decompressed = File.ReadAllBytes(outputTemp);
+            File.Delete(inputTemp);
+            File.Delete(outputTemp);
+            return decompressed;
+        }
         private string BytesToBits(byte[] bytes)
         {
             StringBuilder sb = new StringBuilder(bytes.Length * 8);
@@ -153,5 +190,82 @@ namespace FilesCompressionProject
                 sb.Append(Convert.ToString(b, 2).PadLeft(8, '0'));
             return sb.ToString();
         }
+        public string CompressFolder(string folderPath)
+        {
+            if (!Directory.Exists(folderPath))
+                throw new DirectoryNotFoundException("المجلد غير موجود");
+
+            var files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
+            if (files.Length == 0)
+                throw new InvalidOperationException("المجلد فارغ");
+
+            string archiveName = Path.GetFileName(folderPath.TrimEnd(Path.DirectorySeparatorChar));
+            string parentDir = Path.GetDirectoryName(folderPath.TrimEnd(Path.DirectorySeparatorChar));
+            string archivePath = Path.Combine(
+                parentDir,
+                $"{archiveName}_{DateTime.Now:yyyyMMdd_HHmmss}.huffarc"
+            );
+
+
+            var entries = new List<HuffmanArchiveEntry>();
+
+            using (var fs = new FileStream(archivePath, FileMode.Create))
+            {
+                fs.Seek(1024, SeekOrigin.Begin);
+
+                foreach (var file in files)
+                {
+                    if (isCancelled()) break;
+
+                    string relativePath = GetRelativePath(folderPath, file).Replace('\\', '/');
+
+
+                    byte[] inputBytes = File.ReadAllBytes(file);
+                    byte[] compressedBytes = CompressBytes(inputBytes);
+
+                    long offset = fs.Position;
+                    fs.Write(compressedBytes, 0, compressedBytes.Length);
+
+                    entries.Add(new HuffmanArchiveEntry
+                    {
+                        FileName = relativePath,
+                        OriginalSize = inputBytes.Length,
+                        CompressedSize = compressedBytes.Length,
+                        Offset = offset
+                    });
+                }
+
+                fs.Seek(0, SeekOrigin.Begin);
+                using (BinaryWriter writer = new BinaryWriter(fs, Encoding.UTF8, true))
+                {
+                    writer.Write(entries.Count);
+                    foreach (var entry in entries)
+                    {
+                        writer.Write(entry.FileName);
+                        writer.Write(entry.OriginalSize);
+                        writer.Write(entry.CompressedSize);
+                        writer.Write(entry.Offset);
+                    }
+                }
+            }
+
+            return archivePath;
+        }
+        public static string GetRelativePath(string basePath, string fullPath)
+        {
+            Uri baseUri = new Uri(AppendSlash(basePath));
+            Uri fullUri = new Uri(fullPath);
+            Uri relativeUri = baseUri.MakeRelativeUri(fullUri);
+            return Uri.UnescapeDataString(relativeUri.ToString().Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        private static string AppendSlash(string path)
+        {
+            if (!path.EndsWith(Path.DirectorySeparatorChar.ToString()))
+                return path + Path.DirectorySeparatorChar;
+            return path;
+        }
+
+
     }
 }
