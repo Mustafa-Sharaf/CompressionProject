@@ -22,6 +22,8 @@ namespace FilesCompressionProject
         
 
         private string selectedFilePath = string.Empty;
+        private string selectedFolderPath = string.Empty;
+
         private List<string> selectedFilePaths = new List<string>();
         private List<HuffmanArchiveEntry> archiveEntries = new List<HuffmanArchiveEntry>();
         public Form1()
@@ -53,8 +55,8 @@ namespace FilesCompressionProject
                 folderDialog.Description = "Select a folder";
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    string folderPath = folderDialog.SelectedPath;
-                    string[] files = Directory.GetFiles(folderPath);
+                    selectedFolderPath = folderDialog.SelectedPath; 
+                   
                 }
             }
         }
@@ -392,6 +394,48 @@ namespace FilesCompressionProject
         private bool isCancelled()
         {
             return cancelRequested;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(selectedFolderPath) || !Directory.Exists(selectedFolderPath))
+            {
+                MessageBox.Show("الرجاء اختيار مجلد ", "مجلد غير محدد", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            cancelRequested = false;
+            waitingForm = new WaitingForm();
+            compressWorker = new BackgroundWorker();
+            compressWorker.WorkerSupportsCancellation = true;
+
+            string archivePath = "";
+
+            compressWorker.DoWork += (s, args) =>
+            {
+                var compressor = new HuffmanCompressor(() => cancelRequested);
+                archivePath = compressor.CompressFolder(selectedFolderPath);
+            };
+
+            compressWorker.RunWorkerCompleted += (s, args) =>
+            {
+                if (waitingForm.InvokeRequired)
+                    waitingForm.Invoke((MethodInvoker)(() => waitingForm.Close()));
+                else
+                    waitingForm.Close();
+
+                if (cancelRequested || args.Cancelled)
+                {
+                    MessageBox.Show("تم إلغاء ضغط المجلد", "إلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                MessageBox.Show("تم ضغط المجلد إلى:\n" + archivePath, "نجاح");
+            };
+
+            compressWorker.RunWorkerAsync();
+            waitingForm.ShowDialog();
+            cancelRequested = waitingForm.IsCancelled;
         }
     }
 }
