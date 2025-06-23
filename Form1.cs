@@ -20,6 +20,9 @@ namespace FilesCompressionProject
         private BackgroundWorker decompressWorker;
         private bool cancelRequested = false;
         private BackgroundWorker extractWorker;
+        private string lastArchivePath = "";
+
+
 
 
         private string selectedFilePath = string.Empty;
@@ -181,7 +184,7 @@ namespace FilesCompressionProject
 
         }
 
-        
+
         private void CompressToArchiveButton_Click(object sender, EventArgs e)
         {
             using (var openDialog = new OpenFileDialog())
@@ -197,6 +200,8 @@ namespace FilesCompressionProject
 
                 string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
                 string archivePath = Path.Combine(downloadsPath, DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_compressed.huffarc");
+                lastArchivePath = archivePath;
+
                 List<HuffmanArchiveEntry> entries = new List<HuffmanArchiveEntry>();
 
                 compressWorker.DoWork += (s, args) =>
@@ -215,12 +220,6 @@ namespace FilesCompressionProject
 
                             byte[] inputBytes = File.ReadAllBytes(file);
                             byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
-
-                            if (compressedBytes == null || compressedBytes.Length == 0)
-                            {
-                                MessageBox.Show($"لم يتم ضغط الملف {Path.GetFileName(file)} بسبب عدم إدخال كلمة مرور أو وجود خطأ.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                continue;
-                            }
 
                             long offset = archive.Position;
                             archive.Write(compressedBytes, 0, compressedBytes.Length);
@@ -305,6 +304,8 @@ namespace FilesCompressionProject
                     return;
                 }
 
+                lastArchivePath = archivePath; // ✅ هذا هو السطر الضروري لإصلاح الخطأ
+
                 using (var fs = new FileStream(archivePath, FileMode.Open))
                 using (var reader = new BinaryReader(fs, Encoding.UTF8))
                 {
@@ -325,6 +326,7 @@ namespace FilesCompressionProject
             }
         }
 
+
         private void ExtractSelectedFileButton_Click(object sender, EventArgs e)
         {
             if (archiveFilesListBox.SelectedIndex == -1)
@@ -344,7 +346,12 @@ namespace FilesCompressionProject
             if (entry == null) return;
 
             string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-            string archivePath = Path.Combine(downloadsPath, "compressed.huffarc");
+            string archivePath = lastArchivePath;
+            if (string.IsNullOrEmpty(archivePath) || !File.Exists(archivePath))
+            {
+                MessageBox.Show("لم يتم العثور على ملف الأرشيف.\nيرجى ضغط ملفات أولاً أو تحديد ملف الأرشيف.", "ملف غير موجود", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
             extractWorker.DoWork += (s, args) =>
             {
@@ -403,6 +410,8 @@ namespace FilesCompressionProject
             waitingForm.ShowDialog();
             cancelRequested = waitingForm.IsCancelled;
         }
+
+
 
         private bool isCancelled()
         {
