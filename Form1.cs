@@ -9,11 +9,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FilesCompressionProject;
+using System.Threading;
 
 namespace FilesCompressionProject
 {
     public partial class Form1 : Form
     {
+        private ManualResetEvent pauseEvent = new ManualResetEvent(true);
         private BackgroundWorker backgroundWorker;
         private WaitingForm waitingForm;
         private BackgroundWorker compressWorker;
@@ -33,6 +35,14 @@ namespace FilesCompressionProject
         public Form1()
         {
             InitializeComponent();
+        }
+        private void PauseButton_Click(object sender, EventArgs e)
+        {
+            pauseEvent.Reset(); // يوقف مؤقتًا
+        }
+        private void ResumeButton_Click(object sender, EventArgs e)
+        {
+            pauseEvent.Set(); // يستأنف
         }
 
         private void ChooseFile_Click(object sender, EventArgs e)
@@ -76,6 +86,9 @@ namespace FilesCompressionProject
             cancelRequested = false;
 
             waitingForm = new WaitingForm();
+            waitingForm.PauseRequested += () => pauseEvent.Reset();
+            waitingForm.ResumeRequested += () => pauseEvent.Set();
+
             backgroundWorker = new BackgroundWorker();
             backgroundWorker.WorkerSupportsCancellation = true;
 
@@ -195,6 +208,9 @@ namespace FilesCompressionProject
 
                 cancelRequested = false;
                 waitingForm = new WaitingForm();
+                waitingForm.PauseRequested += () => pauseEvent.Reset();
+                waitingForm.ResumeRequested += () => pauseEvent.Set();
+
                 compressWorker = new BackgroundWorker();
                 compressWorker.WorkerSupportsCancellation = true;
 
@@ -209,21 +225,23 @@ namespace FilesCompressionProject
                     using (FileStream archive = new FileStream(archivePath, FileMode.Create))
                     {
                         archive.Seek(1024, SeekOrigin.Begin); // احجز 1KB كبداية للجدول
-
+                        pauseEvent.WaitOne();
                         foreach (string file in openDialog.FileNames)
                         {
+                            pauseEvent.WaitOne();
+
                             if (cancelRequested)
                             {
                                 args.Cancel = true;
                                 break;
                             }
-
+                            pauseEvent.WaitOne();
                             byte[] inputBytes = File.ReadAllBytes(file);
                             byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
-
+                            pauseEvent.WaitOne();
                             long offset = archive.Position;
                             archive.Write(compressedBytes, 0, compressedBytes.Length);
-
+                            pauseEvent.WaitOne();
                             entries.Add(new HuffmanArchiveEntry
                             {
                                 FileName = Path.GetFileName(file),
@@ -334,17 +352,20 @@ namespace FilesCompressionProject
                 MessageBox.Show("اختر ملفًا من القائمة أولاً.");
                 return;
             }
-
+            pauseEvent.WaitOne();
             cancelRequested = false;
             waitingForm = new WaitingForm();
+            waitingForm.PauseRequested += () => pauseEvent.Reset();
+            waitingForm.ResumeRequested += () => pauseEvent.Set();
+            pauseEvent.WaitOne();
             extractWorker = new BackgroundWorker();
             extractWorker.WorkerSupportsCancellation = true;
-
+            pauseEvent.WaitOne();
             string selectedFileName = archiveFilesListBox.SelectedItem.ToString();
             var entry = archiveEntries.FirstOrDefault(ee => ee.FileName == selectedFileName);
-
+            pauseEvent.WaitOne();
             if (entry == null) return;
-
+            pauseEvent.WaitOne();
             string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             string archivePath = lastArchivePath;
             if (string.IsNullOrEmpty(archivePath) || !File.Exists(archivePath))
@@ -352,7 +373,7 @@ namespace FilesCompressionProject
                 MessageBox.Show("لم يتم العثور على ملف الأرشيف.\nيرجى ضغط ملفات أولاً أو تحديد ملف الأرشيف.", "ملف غير موجود", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-
+            pauseEvent.WaitOne();
             extractWorker.DoWork += (s, args) =>
             {
                 if (cancelRequested)
@@ -360,27 +381,29 @@ namespace FilesCompressionProject
                     args.Cancel = true;
                     return;
                 }
-
+                pauseEvent.WaitOne();
                 using (var fs = new FileStream(archivePath, FileMode.Open))
                 {
+                    pauseEvent.WaitOne();
+
                     fs.Seek(entry.Offset, SeekOrigin.Begin);
                     byte[] compressedData = new byte[entry.CompressedSize];
                     fs.Read(compressedData, 0, compressedData.Length);
-
+                    pauseEvent.WaitOne();
                     if (cancelRequested)
                     {
                         args.Cancel = true;
                         return;
                     }
-
+                    pauseEvent.WaitOne();
                     byte[] decompressedData = new HuffmanCompressor().DecompressBytes(compressedData);
-
+                    pauseEvent.WaitOne();
                     if (cancelRequested)
                     {
                         args.Cancel = true;
                         return;
                     }
-
+                    pauseEvent.WaitOne();
                     string savePath = Path.Combine(downloadsPath, "extracted_" + entry.FileName);
                     File.WriteAllBytes(savePath, decompressedData);
                 }
@@ -428,6 +451,7 @@ namespace FilesCompressionProject
 
             cancelRequested = false;
             waitingForm = new WaitingForm();
+            waitingForm.PauseRequested += () => pauseEvent.Reset();
             compressWorker = new BackgroundWorker();
             compressWorker.WorkerSupportsCancellation = true;
 
@@ -471,6 +495,7 @@ namespace FilesCompressionProject
 
             cancelRequested = false;
             waitingForm = new WaitingForm();
+                waitingForm.PauseRequested += () => pauseEvent.Reset();
             compressWorker = new BackgroundWorker();
             compressWorker.WorkerSupportsCancellation = true;
 
@@ -548,6 +573,9 @@ namespace FilesCompressionProject
 
             cancelRequested = false;
             waitingForm = new WaitingForm();
+            waitingForm.PauseRequested += () => pauseEvent.Reset();
+            waitingForm.ResumeRequested += () => pauseEvent.Set();
+
             decompressWorker = new BackgroundWorker();
             decompressWorker.WorkerSupportsCancellation = true;
 
