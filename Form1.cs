@@ -202,94 +202,120 @@ namespace FilesCompressionProject
         {
             using (var openDialog = new OpenFileDialog())
             {
+                pauseEvent.WaitOne();
                 openDialog.Multiselect = true;
                 openDialog.Title = "Select files to compress";
                 if (openDialog.ShowDialog() != DialogResult.OK) return;
-
+                pauseEvent.WaitOne();
                 cancelRequested = false;
                 waitingForm = new WaitingForm();
                 waitingForm.PauseRequested += () => pauseEvent.Reset();
                 waitingForm.ResumeRequested += () => pauseEvent.Set();
-
+                pauseEvent.WaitOne();
                 compressWorker = new BackgroundWorker();
                 compressWorker.WorkerSupportsCancellation = true;
-
+                pauseEvent.WaitOne();
                 string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
                 string archivePath = Path.Combine(downloadsPath, DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_compressed.huffarc");
                 lastArchivePath = archivePath;
-
+                pauseEvent.WaitOne();
                 List<HuffmanArchiveEntry> entries = new List<HuffmanArchiveEntry>();
-
+                object archiveLock = new object();
+                pauseEvent.WaitOne();
                 compressWorker.DoWork += (s, args) =>
                 {
-                    using (FileStream archive = new FileStream(archivePath, FileMode.Create))
+                    pauseEvent.WaitOne();
+                    using (FileStream archive = new FileStream(archivePath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
-                        archive.Seek(1024, SeekOrigin.Begin); // احجز 1KB كبداية للجدول
                         pauseEvent.WaitOne();
-                        foreach (string file in openDialog.FileNames)
+                        archive.Seek(1024, SeekOrigin.Begin);
+                        pauseEvent.WaitOne();
+                        Parallel.ForEach(openDialog.FileNames, (file, state) =>
                         {
                             pauseEvent.WaitOne();
 
                             if (cancelRequested)
                             {
                                 args.Cancel = true;
-                                break;
+                                state.Stop();
+                                return;
                             }
-                            pauseEvent.WaitOne();
+
                             byte[] inputBytes = File.ReadAllBytes(file);
                             byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
-                            pauseEvent.WaitOne();
-                            long offset = archive.Position;
-                            archive.Write(compressedBytes, 0, compressedBytes.Length);
-                            pauseEvent.WaitOne();
-                            entries.Add(new HuffmanArchiveEntry
-                            {
-                                FileName = Path.GetFileName(file),
-                                OriginalSize = inputBytes.Length,
-                                CompressedSize = compressedBytes.Length,
-                                Offset = offset
-                            });
-                        }
 
+                            long offset;
+
+                            lock (archiveLock)
+                            {
+                                pauseEvent.WaitOne();
+                                offset = archive.Position;
+                                archive.Write(compressedBytes, 0, compressedBytes.Length);
+                            }
+                            pauseEvent.WaitOne();
+                            lock (entries)
+                            {
+                                pauseEvent.WaitOne();
+                                entries.Add(new HuffmanArchiveEntry
+                                {
+                                  
+                                    FileName = Path.GetFileName(file),
+                                    OriginalSize = inputBytes.Length,
+                                    CompressedSize = compressedBytes.Length,
+                                    Offset = offset
+                                });
+                            }
+                        });
+                        pauseEvent.WaitOne();
                         if (!args.Cancel)
                         {
-                            // كتابة جدول المحتويات في البداية
-                            archive.Seek(0, SeekOrigin.Begin);
-                            using (BinaryWriter writer = new BinaryWriter(archive, Encoding.UTF8, true))
+                            pauseEvent.WaitOne();
+                            lock (archiveLock)
                             {
-                                writer.Write(entries.Count);
-                                foreach (var entry in entries)
+                                pauseEvent.WaitOne();
+                                archive.Seek(0, SeekOrigin.Begin);
+                                using (BinaryWriter writer = new BinaryWriter(archive, Encoding.UTF8, true))
                                 {
-                                    writer.Write(entry.FileName);
-                                    writer.Write(entry.OriginalSize);
-                                    writer.Write(entry.CompressedSize);
-                                    writer.Write(entry.Offset);
+                                    pauseEvent.WaitOne();
+                                    writer.Write(entries.Count);
+                                    foreach (var entry in entries)
+                                    {
+                                        pauseEvent.WaitOne();
+                                        writer.Write(entry.FileName);
+                                        writer.Write(entry.OriginalSize);
+                                        writer.Write(entry.CompressedSize);
+                                        writer.Write(entry.Offset);
+                                    }
                                 }
                             }
                         }
                     }
                 };
-
+                pauseEvent.WaitOne();
                 compressWorker.RunWorkerCompleted += (s, args) =>
                 {
+                    pauseEvent.WaitOne();
                     if (waitingForm.InvokeRequired)
                     {
+                        pauseEvent.WaitOne();
                         waitingForm.Invoke((MethodInvoker)(() => waitingForm.Close()));
                     }
                     else
                     {
+                        pauseEvent.WaitOne();
                         waitingForm.Close();
                     }
 
-                    if (args.Cancelled)
+                    if (args.Cancelled || cancelRequested)
                     {
+                        pauseEvent.WaitOne();
                         MessageBox.Show("تم إلغاء الضغط", "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
-
+                    pauseEvent.WaitOne();
                     MessageBox.Show("تم ضغط الملفات في مجلد التنزيلات داخل compressed.huffarc");
                 };
-
+                pauseEvent.WaitOne();
                 compressWorker.RunWorkerAsync();
                 waitingForm.ShowDialog();
                 cancelRequested = waitingForm.IsCancelled;
@@ -370,44 +396,35 @@ namespace FilesCompressionProject
             string archivePath = lastArchivePath;
             if (string.IsNullOrEmpty(archivePath) || !File.Exists(archivePath))
             {
+                pauseEvent.WaitOne();
                 MessageBox.Show("لم يتم العثور على ملف الأرشيف.\nيرجى ضغط ملفات أولاً أو تحديد ملف الأرشيف.", "ملف غير موجود", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             pauseEvent.WaitOne();
             extractWorker.DoWork += (s, args) =>
             {
-                if (cancelRequested)
-                {
-                    args.Cancel = true;
-                    return;
-                }
+                pauseEvent.WaitOne();
+                if (cancelRequested) { args.Cancel = true; return; }
+
                 pauseEvent.WaitOne();
                 using (var fs = new FileStream(archivePath, FileMode.Open))
                 {
                     pauseEvent.WaitOne();
-
                     fs.Seek(entry.Offset, SeekOrigin.Begin);
                     byte[] compressedData = new byte[entry.CompressedSize];
                     fs.Read(compressedData, 0, compressedData.Length);
                     pauseEvent.WaitOne();
-                    if (cancelRequested)
-                    {
-                        args.Cancel = true;
-                        return;
-                    }
+                    if (cancelRequested) { args.Cancel = true; return; }
                     pauseEvent.WaitOne();
                     byte[] decompressedData = new HuffmanCompressor().DecompressBytes(compressedData);
                     pauseEvent.WaitOne();
-                    if (cancelRequested)
-                    {
-                        args.Cancel = true;
-                        return;
-                    }
+                    if (cancelRequested) { args.Cancel = true; return; }
                     pauseEvent.WaitOne();
                     string savePath = Path.Combine(downloadsPath, "extracted_" + entry.FileName);
                     File.WriteAllBytes(savePath, decompressedData);
                 }
             };
+
 
             extractWorker.RunWorkerCompleted += (s, args) =>
             {
