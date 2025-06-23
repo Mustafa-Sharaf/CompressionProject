@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace FilesCompressionProject
 {
     internal static class Program
-    {
+    {   //mustafa sharaf
         /// <summary>
         /// The main entry point for the application.
         /// </summary>

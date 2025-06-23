@@ -43,6 +43,7 @@
             this.browseArchiveButton = new System.Windows.Forms.Button();
             this.extractSelectedFileButton = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
+            this.DecompressShannonFano = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // CompressionHuffman
@@ -61,9 +62,9 @@
             this.Decompress.Location = new System.Drawing.Point(337, 104);
             this.Decompress.Margin = new System.Windows.Forms.Padding(2);
             this.Decompress.Name = "Decompress";
-            this.Decompress.Size = new System.Drawing.Size(56, 19);
+            this.Decompress.Size = new System.Drawing.Size(109, 19);
             this.Decompress.TabIndex = 1;
-            this.Decompress.Text = "Decompress";
+            this.Decompress.Text = "Decompress Huffman";
             this.Decompress.UseVisualStyleBackColor = true;
             this.Decompress.Click += new System.EventHandler(this.Decompress_Click);
             // 
@@ -141,7 +142,7 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(337, 140);
+            this.button1.Location = new System.Drawing.Point(337, 143);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(109, 23);
             this.button1.TabIndex = 10;
@@ -149,11 +150,22 @@
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
+            // DecompressShannonFano
+            // 
+            this.DecompressShannonFano.Location = new System.Drawing.Point(300, 169);
+            this.DecompressShannonFano.Name = "DecompressShannonFano";
+            this.DecompressShannonFano.Size = new System.Drawing.Size(180, 23);
+            this.DecompressShannonFano.TabIndex = 5;
+            this.DecompressShannonFano.Text = "Decompress Shannon Fano";
+            this.DecompressShannonFano.UseVisualStyleBackColor = true;
+            this.DecompressShannonFano.Click += new System.EventHandler(this.DecompressShannonFano_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(600, 366);
+            this.Controls.Add(this.DecompressShannonFano);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.CompressionShannonFano);
             this.Controls.Add(this.ChooseFolder);
@@ -178,6 +190,7 @@
         private System.Windows.Forms.Button ChooseFile;
         private System.Windows.Forms.Button ChooseFolder;
         private System.Windows.Forms.Button CompressionShannonFano;
+        private System.Windows.Forms.Button DecompressShannonFano;
         private System.Windows.Forms.Button button1;
     }
 }

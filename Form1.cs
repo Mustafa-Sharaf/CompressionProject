@@ -17,6 +17,7 @@ namespace FilesCompressionProject
         private BackgroundWorker backgroundWorker;
         private WaitingForm waitingForm;
         private BackgroundWorker compressWorker;
+        private BackgroundWorker decompressWorker;
         private bool cancelRequested = false;
         private BackgroundWorker extractWorker;
         
@@ -55,8 +56,8 @@ namespace FilesCompressionProject
                 folderDialog.Description = "Select a folder";
                 if (folderDialog.ShowDialog() == DialogResult.OK)
                 {
-                    selectedFolderPath = folderDialog.SelectedPath; 
-                   
+                    selectedFolderPath = folderDialog.SelectedPath;
+
                 }
             }
         }
@@ -90,7 +91,10 @@ namespace FilesCompressionProject
                     string outputPath = Path.Combine(directory, fileName + ".huff");
 
                     compressor.CompressFile(filePath, outputPath);
-                    results.Add((filePath, outputPath));
+                    if (File.Exists(outputPath))
+                    {
+                        results.Add((filePath, outputPath));
+                    }
                 }
             };
 
@@ -109,6 +113,11 @@ namespace FilesCompressionProject
                 {
                     MessageBox.Show("تم إلغاء العملية", 
                      "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (results.Count == 0)
+                {
                     return;
                 }
 
@@ -142,16 +151,6 @@ namespace FilesCompressionProject
             cancelRequested = waitingForm.IsCancelled;
         }
 
-        private void CompressionShannonFano_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(selectedFilePath))
-            {
-                MessageBox.Show("Please select the file first", "Missing File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            if (isCancelled()) return;
-        }
-
         private void Decompress_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(selectedFilePath))
@@ -166,12 +165,88 @@ namespace FilesCompressionProject
             string compressedPath = selectedFilePath;
 
             string originalName = Path.GetFileNameWithoutExtension(selectedFilePath);
-            string decompressedPath = Path.Combine(directory, originalName );
+            string decompressedPath = Path.Combine(directory, originalName);
 
-            compressor.DecompressFile(compressedPath, decompressedPath);
+            bool success = compressor.DecompressFile(compressedPath, decompressedPath);
 
-            MessageBox.Show("decompressed.huffتم فك الضغط وحفظ الملف باسم ");
+            if (success)
+            {
+                MessageBox.Show("تم فك الضغط وحفظ الملف بنجاح.");
+            }
+            else
+            {
+            }
 
+
+
+        }
+
+        private void CompressionShannonFano_Click(object sender, EventArgs e)
+        {
+            if (selectedFilePaths == null   || selectedFilePaths.Count == 0 || selectedFilePaths.Any(f => !File.Exists(f)))
+             {
+                MessageBox.Show("يرجى اختيار ملف صالح واحد على الأقل", "ملف مفقود", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            cancelRequested = false;
+            waitingForm = new WaitingForm();
+            compressWorker = new BackgroundWorker();
+            compressWorker.WorkerSupportsCancellation = true;
+
+            List<string> compressedPaths = new List<string>();
+
+            compressWorker.DoWork += (s, args) =>
+            {
+                try
+                {
+                    foreach (var inputPath in selectedFilePaths)
+                    {
+                        if (cancelRequested)
+                            throw new OperationCanceledException();
+
+                        var compressor = new ShannonFanoCompressor(() => cancelRequested);
+                        string compressedPath = compressor.CompressFile(inputPath);
+                        compressedPaths.Add(compressedPath);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    args.Cancel = true;
+                }
+            };
+
+            compressWorker.RunWorkerCompleted += (s, args) =>
+            {
+                if (waitingForm.InvokeRequired)
+                    waitingForm.Invoke((MethodInvoker)(() => waitingForm.Close()));
+                else
+                    waitingForm.Close();
+
+                if (cancelRequested || args.Cancelled)
+                {
+                    MessageBox.Show("تم إلغاء عملية الضغط", "إلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                StringBuilder message = new StringBuilder();
+                message.AppendLine("تم ضغط الملفات بنجاح:\n");
+
+                foreach (var compressedPath in compressedPaths)
+                {
+                    var compressedFile = new FileInfo(compressedPath);
+
+                    message.AppendLine($"{Path.GetFileName(compressedPath)}");
+                    message.AppendLine($"الحجم بعد الضغط: {compressedFile.Length} bytes");
+                    message.AppendLine();
+                }
+
+                MessageBox.Show(message.ToString(), "تمت العملية", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+
+            compressWorker.RunWorkerAsync();
+            waitingForm.ShowDialog();
+            cancelRequested = waitingForm.IsCancelled;
 
         }
 
@@ -208,6 +283,12 @@ namespace FilesCompressionProject
 
                             byte[] inputBytes = File.ReadAllBytes(file);
                             byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
+
+                            if (compressedBytes == null || compressedBytes.Length == 0)
+                            {
+                                MessageBox.Show($"لم يتم ضغط الملف {Path.GetFileName(file)} بسبب عدم إدخال كلمة مرور أو وجود خطأ.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                continue; 
+                            }
 
                             long offset = archive.Position;
                             archive.Write(compressedBytes, 0, compressedBytes.Length);
@@ -437,5 +518,59 @@ namespace FilesCompressionProject
             waitingForm.ShowDialog();
             cancelRequested = waitingForm.IsCancelled;
         }
+
+        private void DecompressShannonFano_Click(object sender, EventArgs e)
+        {
+
+
+            using (var openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Title = "اختر ملف مضغوط بصيغة Shannon-Fano";
+                openFileDialog.Filter = "Shannon-Fano Compressed Files (*.shf)|*.shf";
+
+                if (openFileDialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                selectedFilePath = openFileDialog.FileName;
+            }
+
+            cancelRequested = false;
+            waitingForm = new WaitingForm();
+            decompressWorker = new BackgroundWorker();
+            decompressWorker.WorkerSupportsCancellation = true;
+
+            decompressWorker.DoWork += (s, args) =>
+            {
+                try
+                {
+                    var compressor = new ShannonFanoCompressor(() => cancelRequested);
+                    compressor.DecompressFile(selectedFilePath, () => cancelRequested);
+                }
+                catch (OperationCanceledException)
+                {
+                    args.Cancel = true;
+                }
+            };
+
+            decompressWorker.RunWorkerCompleted += (s, args) =>
+            {
+                if (waitingForm.InvokeRequired)
+                    waitingForm.Invoke((MethodInvoker)(() => waitingForm.Close()));
+                else
+                    waitingForm.Close();
+
+                if (cancelRequested || args.Cancelled)
+                {
+                    MessageBox.Show("تم إلغاء عملية فك الضغط", "إلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            };
+
+            decompressWorker.RunWorkerAsync();
+            waitingForm.ShowDialog();
+            cancelRequested = waitingForm.IsCancelled;
+
+        }
     }
 }
+//mustafa
