@@ -17,10 +17,9 @@ namespace FilesCompressionProject
         private BackgroundWorker backgroundWorker;
         private WaitingForm waitingForm;
         private BackgroundWorker compressWorker;
+        private BackgroundWorker decompressWorker;
         private bool cancelRequested = false;
         private BackgroundWorker extractWorker;
-        private BackgroundWorker decompressWorker;
-
 
 
         private string selectedFilePath = string.Empty;
@@ -92,7 +91,10 @@ namespace FilesCompressionProject
                     string outputPath = Path.Combine(directory, fileName + ".huff");
 
                     compressor.CompressFile(filePath, outputPath);
-                    results.Add((filePath, outputPath));
+                    if (File.Exists(outputPath))
+                    {
+                        results.Add((filePath, outputPath));
+                    }
                 }
             };
 
@@ -111,6 +113,11 @@ namespace FilesCompressionProject
                 {
                     MessageBox.Show("تم إلغاء العملية",
                      "تم الإلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (results.Count == 0)
+                {
                     return;
                 }
 
@@ -160,14 +167,21 @@ namespace FilesCompressionProject
             string originalName = Path.GetFileNameWithoutExtension(selectedFilePath);
             string decompressedPath = Path.Combine(directory, originalName);
 
-            compressor.DecompressFile(compressedPath, decompressedPath);
+            bool success = compressor.DecompressFile(compressedPath, decompressedPath);
 
-            MessageBox.Show("decompressed.huffتم فك الضغط وحفظ الملف باسم ");
+            if (success)
+            {
+                MessageBox.Show("تم فك الضغط وحفظ الملف بنجاح.");
+            }
+            else
+            {
+            }
+
 
 
         }
 
-
+        
         private void CompressToArchiveButton_Click(object sender, EventArgs e)
         {
             using (var openDialog = new OpenFileDialog())
@@ -201,6 +215,12 @@ namespace FilesCompressionProject
 
                             byte[] inputBytes = File.ReadAllBytes(file);
                             byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
+
+                            if (compressedBytes == null || compressedBytes.Length == 0)
+                            {
+                                MessageBox.Show($"لم يتم ضغط الملف {Path.GetFileName(file)} بسبب عدم إدخال كلمة مرور أو وجود خطأ.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                continue;
+                            }
 
                             long offset = archive.Position;
                             archive.Write(compressedBytes, 0, compressedBytes.Length);
@@ -257,7 +277,6 @@ namespace FilesCompressionProject
                 waitingForm.ShowDialog();
                 cancelRequested = waitingForm.IsCancelled;
             }
-
         }
 
         private void BrowseArchiveButton_Click(object sender, EventArgs e)
@@ -304,7 +323,6 @@ namespace FilesCompressionProject
                     }
                 }
             }
-
         }
 
         private void ExtractSelectedFileButton_Click(object sender, EventArgs e)
@@ -384,10 +402,7 @@ namespace FilesCompressionProject
             extractWorker.RunWorkerAsync();
             waitingForm.ShowDialog();
             cancelRequested = waitingForm.IsCancelled;
-
         }
-
-
 
         private bool isCancelled()
         {
@@ -506,10 +521,10 @@ namespace FilesCompressionProject
 
         }
 
-       
+
         private void DecompressShannonFano_Click(object sender, EventArgs e)
         {
-            
+
 
             using (var openFileDialog = new OpenFileDialog())
             {
@@ -559,8 +574,8 @@ namespace FilesCompressionProject
             cancelRequested = waitingForm.IsCancelled;
 
         }
+
+       
     }
-
-
-
 }
+//mustafa

@@ -19,11 +19,27 @@ namespace FilesCompressionProject
         public void CompressFile(string filePath, string outputPath = "compressed.huff")
         {
             var bytes = File.ReadAllBytes(filePath);
+
             if (bytes.Length == 0)
             {
                 Console.WriteLine($"تم تجاهل الملف الفارغ: {filePath}");
                 return;
             }
+
+            string password = PromptForPassword();
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                System.Media.SystemSounds.Beep.Play(); 
+                System.Windows.Forms.MessageBox.Show("لم يتم إدخال كلمة المرور، تم إلغاء عملية الضغط.", "تنبيه", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                Console.WriteLine("إلغاء الضغط بسبب عدم إدخال كلمة المرور.");
+                return;
+            }
+
+
             var freq = BuildFrequencyTable(bytes);
             var tree = BuildTree(freq);
 
@@ -31,10 +47,14 @@ namespace FilesCompressionProject
             GenerateCodes(tree, "", codes);
 
             var encodedBits = string.Concat(bytes.Select(b => codes[b]));
+           
 
             using (BinaryWriter writer = new BinaryWriter(File.Open(outputPath, FileMode.Create)))
             {
 
+                byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
+                writer.Write(passwordBytes.Length);
+                writer.Write(passwordBytes);
                 writer.Write(codes.Count);
 
 
@@ -54,10 +74,29 @@ namespace FilesCompressionProject
             }
         }
 
-        public void DecompressFile(string inputPath, string outputPath = "decompressed_output")
+        public bool DecompressFile(string inputPath, string outputPath = "decompressed_output")
         {
             using (BinaryReader reader = new BinaryReader(File.Open(inputPath, FileMode.Open)))
             {
+
+                int passwordLength = reader.ReadInt32();
+                byte[] storedPasswordBytes = reader.ReadBytes(passwordLength);
+
+                string enteredPassword = PromptForPassword();
+                if (string.IsNullOrWhiteSpace(enteredPassword))
+                {
+                    System.Media.SystemSounds.Beep.Play();
+                    System.Windows.Forms.MessageBox.Show("يجب إدخال كلمة المرور لفك الضغط.", "خطأ", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                    return false ;
+                }
+
+                byte[] enteredPasswordBytes = Encoding.UTF8.GetBytes(enteredPassword);
+
+                if (!storedPasswordBytes.SequenceEqual(enteredPasswordBytes))
+                {
+                    Console.WriteLine("كلمة المرور غير صحيحة!");
+                    return false ;
+                }
 
                 int codeCount = reader.ReadInt32();
                 var codeTable = new Dictionary<string, byte>();
@@ -76,7 +115,7 @@ namespace FilesCompressionProject
                 List<byte> result = new List<byte>();
                 string buffer = "";
                 foreach (char bit in bitString)
-                {if (isCancelled()) return;
+                {if (isCancelled()) return false;
 
                     buffer += bit;
                     if (codeTable.ContainsKey(buffer))
@@ -88,6 +127,7 @@ namespace FilesCompressionProject
 
                 File.WriteAllBytes(outputPath, result.ToArray());
             }
+            return true;
         }
 
         private Dictionary<byte, int> BuildFrequencyTable(byte[] data)
@@ -166,6 +206,14 @@ namespace FilesCompressionProject
             string outputTemp = Path.GetTempFileName();
             File.WriteAllBytes(inputTemp, inputBytes);
             CompressFile(inputTemp, outputTemp);
+
+            if (!File.Exists(outputTemp) || new FileInfo(outputTemp).Length == 0)
+            {
+                File.Delete(inputTemp);
+                File.Delete(outputTemp);
+                return null; 
+            }
+
             byte[] compressed = File.ReadAllBytes(outputTemp);
             File.Delete(inputTemp);
             File.Delete(outputTemp);
@@ -177,7 +225,13 @@ namespace FilesCompressionProject
             string inputTemp = Path.GetTempFileName();
             string outputTemp = Path.GetTempFileName();
             File.WriteAllBytes(inputTemp, compressedBytes);
-            DecompressFile(inputTemp, outputTemp);
+            bool success = DecompressFile(inputTemp, outputTemp);
+            if (!success)
+            {
+                File.Delete(inputTemp);
+                File.Delete(outputTemp);
+                return null;
+            }
             byte[] decompressed = File.ReadAllBytes(outputTemp);
             File.Delete(inputTemp);
             File.Delete(outputTemp);
@@ -215,7 +269,13 @@ namespace FilesCompressionProject
 
                 foreach (var file in files)
                 {
-                    if (isCancelled()) break;
+                    if (isCancelled())
+                    {
+                        fs.Close();
+                        if (File.Exists(archivePath))
+                            File.Delete(archivePath);
+                        return null;
+                    }
 
                     string relativePath = GetRelativePath(folderPath, file).Replace('\\', '/');
 
@@ -264,6 +324,10 @@ namespace FilesCompressionProject
             if (!path.EndsWith(Path.DirectorySeparatorChar.ToString()))
                 return path + Path.DirectorySeparatorChar;
             return path;
+        }
+        public static string PromptForPassword()
+        {
+            return Microsoft.VisualBasic.Interaction.InputBox("أدخل كلمة المرور:", "حماية الملف", "");
         }
 
 
