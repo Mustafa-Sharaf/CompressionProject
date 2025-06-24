@@ -39,6 +39,7 @@ namespace FilesCompressionProject
         private void PauseButton_Click(object sender, EventArgs e)
         {
             pauseEvent.Reset(); // يوقف مؤقتًا
+           
         }
         private void ResumeButton_Click(object sender, EventArgs e)
         {
@@ -225,6 +226,13 @@ namespace FilesCompressionProject
                 compressWorker.DoWork += (s, args) =>
                 {
                     pauseEvent.WaitOne();
+
+                    string password = HuffmanCompressor.PromptForPassword();
+                     if (string.IsNullOrWhiteSpace(password))//5
+                    {
+                        MessageBox.Show("لم يتم إدخال كلمة المرور. تم إلغاء الضغط.", "تنبيه", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        args.Cancel = true; return;
+                    }
                     using (FileStream archive = new FileStream(archivePath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
                         pauseEvent.WaitOne();
@@ -242,7 +250,7 @@ namespace FilesCompressionProject
                             }
 
                             byte[] inputBytes = File.ReadAllBytes(file);
-                            byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes);
+                            byte[] compressedBytes = new HuffmanCompressor().CompressBytes(inputBytes,password);
 
                             long offset;
 

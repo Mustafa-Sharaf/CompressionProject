@@ -16,7 +16,9 @@ namespace FilesCompressionProject
         isCancelled = cancelFunc ?? (() => false);
     }
 
-        public void CompressFile(string filePath, string outputPath = "compressed.huff")
+
+        //public void CompressFile(string filePath, string outputPath = "compressed.huff")
+        public void CompressFile(string filePath, string outputPath = "compressed.huff", string password = null)
         {
             var bytes = File.ReadAllBytes(filePath);
 
@@ -26,13 +28,17 @@ namespace FilesCompressionProject
                 return;
             }
 
-            string password = PromptForPassword();
+           /* string password = PromptForPassword();
             if (string.IsNullOrWhiteSpace(password))
-            {
-                System.Media.SystemSounds.Beep.Play(); 
-                System.Windows.Forms.MessageBox.Show("لم يتم إدخال كلمة المرور، تم إلغاء عملية الضغط.", "تنبيه", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-                return;
-            }
+                 {
+                     System.Media.SystemSounds.Beep.Play(); 
+                     System.Windows.Forms.MessageBox.Show("لم يتم إدخال كلمة المرور، تم إلغاء عملية الضغط.", "تنبيه", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                     return;
+                 }*/
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    password = PromptForPassword();
+                 }
             if (string.IsNullOrWhiteSpace(password))
             {
                 Console.WriteLine("إلغاء الضغط بسبب عدم إدخال كلمة المرور.");
@@ -200,12 +206,13 @@ namespace FilesCompressionProject
 
             return result;
         }
-        public byte[] CompressBytes(byte[] inputBytes)
+        //public byte[] CompressBytes(byte[] inputBytes)
+        public byte[] CompressBytes(byte[] inputBytes, string password = null)
         {
             string inputTemp = Path.GetTempFileName();
             string outputTemp = Path.GetTempFileName();
             File.WriteAllBytes(inputTemp, inputBytes);
-            CompressFile(inputTemp, outputTemp);
+            CompressFile(inputTemp, outputTemp,password);
 
             if (!File.Exists(outputTemp) || new FileInfo(outputTemp).Length == 0)
             {
@@ -259,6 +266,12 @@ namespace FilesCompressionProject
                 parentDir,
                 $"{archiveName}_{DateTime.Now:yyyyMMdd_HHmmss}.huffarc"
             );
+            string password = PromptForPassword();//4
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                System.Windows.Forms.MessageBox.Show("لم يتم إدخال كلمة المرور. تم إلغاء الضغط.", "تنبيه", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                return null;
+            }
 
 
             var entries = new List<HuffmanArchiveEntry>();
@@ -281,9 +294,13 @@ namespace FilesCompressionProject
 
 
                     byte[] inputBytes = File.ReadAllBytes(file);
-                    byte[] compressedBytes = CompressBytes(inputBytes);
+                    byte[] compressedBytes = CompressBytes(inputBytes,password);
+                    if (compressedBytes == null)
+                    {
+                        Console.WriteLine($"فشل ضغط الملف: {file}"); continue;
+                     }
 
-                    long offset = fs.Position;
+                long offset = fs.Position;
                     fs.Write(compressedBytes, 0, compressedBytes.Length);
 
                     entries.Add(new HuffmanArchiveEntry
