@@ -135,6 +135,7 @@ namespace FilesCompressionProject
 
                 if (results.Count == 0)
                 {
+                    MessageBox.Show("لم يتم ضغط الملف تأكد من إدخال كلمة المرور", "فشل الضغط", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -192,6 +193,7 @@ namespace FilesCompressionProject
             }
             else
             {
+                MessageBox.Show("كلمة المرور غير صحيحة", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
 
@@ -426,6 +428,13 @@ namespace FilesCompressionProject
                     pauseEvent.WaitOne();
                     byte[] decompressedData = new HuffmanCompressor().DecompressBytes(compressedData);
                     pauseEvent.WaitOne();
+                    if (decompressedData == null)
+                    {
+                        System.Media.SystemSounds.Beep.Play();
+                        MessageBox.Show("فشل استخراج الملف كلمة المرور غير صحيحة ", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        args.Cancel = true;
+                        return;
+                    }
                     if (cancelRequested) { args.Cancel = true; return; }
                     pauseEvent.WaitOne();
                     string savePath = Path.Combine(downloadsPath, "extracted_" + entry.FileName);
@@ -498,6 +507,11 @@ namespace FilesCompressionProject
                 if (cancelRequested || args.Cancelled)
                 {
                     MessageBox.Show("تم إلغاء ضغط المجلد", "إلغاء", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (string.IsNullOrEmpty(archivePath))
+                {
+                    MessageBox.Show("فشل ضغط المجلد ", "فشل", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 

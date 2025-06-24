@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Windows.Forms;
 
 namespace FilesCompressionProject
 {
@@ -61,6 +62,8 @@ namespace FilesCompressionProject
                 byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
                 writer.Write(passwordBytes.Length);
                 writer.Write(passwordBytes);
+                string originalFileName = Path.GetFileName(filePath);
+                writer.Write(originalFileName);
                 writer.Write(codes.Count);
 
 
@@ -82,6 +85,7 @@ namespace FilesCompressionProject
 
         public bool DecompressFile(string inputPath, string outputPath = "decompressed_output")
         {
+
             using (BinaryReader reader = new BinaryReader(File.Open(inputPath, FileMode.Open)))
             {
 
@@ -103,6 +107,8 @@ namespace FilesCompressionProject
                     Console.WriteLine("كلمة المرور غير صحيحة!");
                     return false ;
                 }
+
+                string originalFileName = reader.ReadString();
 
                 int codeCount = reader.ReadInt32();
                 var codeTable = new Dictionary<string, byte>();
@@ -131,7 +137,13 @@ namespace FilesCompressionProject
                     }
                 }
 
-                File.WriteAllBytes(outputPath, result.ToArray());
+                string ext = Path.GetExtension(originalFileName);
+                string baseName = Path.GetFileNameWithoutExtension(originalFileName);
+                string finalOutputPath = Path.ChangeExtension(outputPath, null); 
+                finalOutputPath += "_decompressed" + ext;
+
+                File.WriteAllBytes(finalOutputPath, result.ToArray());
+
             }
             return true;
         }
