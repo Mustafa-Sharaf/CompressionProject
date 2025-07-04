@@ -83,12 +83,10 @@ namespace FilesCompressionProject
             }
         }
 
-        public bool DecompressFile(string inputPath, string outputPath = "decompressed_output")
+        public bool DecompressFile(string inputPath, string outputPath)
         {
-
             using (BinaryReader reader = new BinaryReader(File.Open(inputPath, FileMode.Open)))
             {
-
                 int passwordLength = reader.ReadInt32();
                 byte[] storedPasswordBytes = reader.ReadBytes(passwordLength);
 
@@ -96,20 +94,18 @@ namespace FilesCompressionProject
                 if (string.IsNullOrWhiteSpace(enteredPassword))
                 {
                     System.Media.SystemSounds.Beep.Play();
-                    System.Windows.Forms.MessageBox.Show("يجب إدخال كلمة المرور لفك الضغط.", "خطأ", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                    return false ;
+                    MessageBox.Show("يجب إدخال كلمة المرور لفك الضغط.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
                 }
 
                 byte[] enteredPasswordBytes = Encoding.UTF8.GetBytes(enteredPassword);
-
                 if (!storedPasswordBytes.SequenceEqual(enteredPasswordBytes))
                 {
                     Console.WriteLine("كلمة المرور غير صحيحة!");
-                    return false ;
+                    return false;
                 }
 
                 string originalFileName = reader.ReadString();
-
                 int codeCount = reader.ReadInt32();
                 var codeTable = new Dictionary<string, byte>();
                 for (int i = 0; i < codeCount; i++)
@@ -120,14 +116,14 @@ namespace FilesCompressionProject
                 }
 
                 int totalBits = reader.ReadInt32();
-
                 var bitBytes = reader.ReadBytes((totalBits + 7) / 8);
                 string bitString = BytesToBits(bitBytes).Substring(0, totalBits);
 
                 List<byte> result = new List<byte>();
                 string buffer = "";
                 foreach (char bit in bitString)
-                {if (isCancelled()) return false;
+                {
+                    if (isCancelled()) return false;
 
                     buffer += bit;
                     if (codeTable.ContainsKey(buffer))
@@ -137,16 +133,11 @@ namespace FilesCompressionProject
                     }
                 }
 
-                string ext = Path.GetExtension(originalFileName);
-                string baseName = Path.GetFileNameWithoutExtension(originalFileName);
-                string finalOutputPath = Path.ChangeExtension(outputPath, null); 
-                finalOutputPath += "_decompressed" + ext;
-
-                File.WriteAllBytes(finalOutputPath, result.ToArray());
-
+                File.WriteAllBytes(outputPath, result.ToArray()); // ✅ Write directly to the provided path
             }
             return true;
         }
+
 
         private Dictionary<byte, int> BuildFrequencyTable(byte[] data)
         {
@@ -256,6 +247,7 @@ namespace FilesCompressionProject
             File.Delete(outputTemp);
             return decompressed;
         }
+
         private string BytesToBits(byte[] bytes)
         {
             StringBuilder sb = new StringBuilder(bytes.Length * 8);
